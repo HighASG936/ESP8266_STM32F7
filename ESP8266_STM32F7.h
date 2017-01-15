@@ -11,8 +11,7 @@ uint8_t ATConectar[] =
 {
 	'A','T','+','C','W','J','A','P','=',
 	'"',0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,'"',',',
-	'"',0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,'"','\r','\n'
-};
+	'"',0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,'"'};
 
 typedef struct
 {
@@ -38,6 +37,8 @@ void Wifi_EnviarATComand(uint8_t * Comando)
 	 	HAL_UART_Transmit(&gsWifi.WifiUart , (uint8_t *)u8ATComand,1,100);
 		u8ATComand++;
 	}	
+	HAL_UART_Transmit(&gsWifi.WifiUart ,(uint8_t *) "\r\n",2,100);
+	while (Terminal_Uart_Recibir(&gsWifi.WifiUart) != UartIdle);
 }
 
 
@@ -72,9 +73,9 @@ void Wifi_Conectar(uint8_t * Name, uint8_t * Password)
 		u8ParametroIndex++;
 	}
 	Wifi_EnviarATComand(ATConectar);
-	printf("Conectando...");
 	uint8_t i;
-	for(i=0;i<150;i++)
+		printf("\r\nCONECTANDO...\r\n");
+	for(i=0;i<130;i++)
 	{
 	while (Terminal_Uart_Recibir(&gsWifi.WifiUart) != UartIdle);
 	}
@@ -90,13 +91,10 @@ void Wifi_Inicializar(UART_HandleTypeDef UART)
 	Terminal_Uart_Inicializar();
 	gsWifi.getStatus();
 	gsWifi.Conectar((uint8_t *) "INFINITUM369f",(uint8_t *) "a1add102e0");
-	gsWifi.ATComand((uint8_t *)"AT+CIPMUX=1\r\n");
-	while (Terminal_Uart_Recibir(&gsWifi.WifiUart) != UartIdle);
-	gsWifi.ATComand((uint8_t *)"AT+CIPSERVER=1,80\r\n");
-	while (Terminal_Uart_Recibir(&gsWifi.WifiUart) != UartIdle);
-	gsWifi.ATComand((uint8_t *)"AT+CIFSR\r\n");
-	while (Terminal_Uart_Recibir(&gsWifi.WifiUart) != UartIdle);
-	printf("Listo para Usarse");
+	gsWifi.ATComand((uint8_t *)"AT+CIPMUX=1");
+	gsWifi.ATComand((uint8_t *)"AT+CIPSERVER=1,80");
+	gsWifi.ATComand((uint8_t *)"AT+CIFSR");
+	printf("\r\nListo para Usarse\r\n");
 }
 
 #endif
