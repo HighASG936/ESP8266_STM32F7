@@ -75,7 +75,7 @@ void Wifi_Conectar(uint8_t * Name, uint8_t * Password)
 	Wifi_EnviarATComand(ATConectar);
 	uint8_t i;
 		printf("\r\nCONECTANDO...\r\n");
-	for(i=0;i<130;i++)
+	for(i=0;i<200;i++)
 	{
 	while (Terminal_Uart_Recibir(&gsWifi.WifiUart) != UartIdle);
 	}
