@@ -7,6 +7,12 @@
 #define NombreIndex	10
 #define PassIndex		26
 
+void Wifi_Inicializar(UART_HandleTypeDef UART);
+void Wifi_EnviarATComand(uint8_t * Comando);
+void Wifi_GetStatus (void);
+void Wifi_Conectar(uint8_t * Name, uint8_t * Password);
+void Wifi_Atencion(void);
+
 uint8_t ATConectar[] = 
 {
 	'A','T','+','C','W','J','A','P','=',
@@ -83,17 +89,13 @@ void Wifi_Conectar(uint8_t * Name, uint8_t * Password)
 
 void Wifi_Inicializar(UART_HandleTypeDef UART)
 {
-	gsWifi.WifiUart 			= UART;
+	gsWifi.WifiUart 			= 	UART;
 	gsWifi.getStatus 			= 	Wifi_GetStatus;
 	gsWifi.Atencion				=		Wifi_Atencion;
 	gsWifi.ATComand				=   Wifi_EnviarATComand;
 	gsWifi.Conectar				=		Wifi_Conectar;
 	Terminal_Uart_Inicializar();
 	gsWifi.getStatus();
-	gsWifi.Conectar((uint8_t *) "INFINITUM369f",(uint8_t *) "a1add102e0");
-	gsWifi.ATComand((uint8_t *)"AT+CIPMUX=1");
-	gsWifi.ATComand((uint8_t *)"AT+CIPSERVER=1,80");
-	gsWifi.ATComand((uint8_t *)"AT+CIFSR");
 	printf("\r\nListo para Usarse\r\n");
 }
 
