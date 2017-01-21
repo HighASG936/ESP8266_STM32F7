@@ -2,7 +2,6 @@
 #define ESP8266_STM32F7_H
 
 #include "Terminal_Uart.h"
-#include "string.h"
 
 #define NombreIndex	10
 #define PassIndex		26
@@ -22,7 +21,6 @@ uint8_t ATConectar[] =
 typedef struct
 {
 	UART_HandleTypeDef WifiUart;
-	uint8_t  WifiBuffer[100]; 
 	struct
 	{
 		void (*getStatus)(void);
@@ -31,9 +29,9 @@ typedef struct
 		void (*Conectar)(uint8_t * Name, uint8_t * Password);
 
 	};
-}sWifi;
+}eWifi;
 
-sWifi	gsWifi;
+eWifi	gsWifi;
 
 void Wifi_EnviarATComand(uint8_t * Comando)
 {
@@ -96,7 +94,6 @@ void Wifi_Inicializar(UART_HandleTypeDef UART)
 	gsWifi.Conectar				=		Wifi_Conectar;
 	Terminal_Uart_Inicializar();
 	gsWifi.getStatus();
-	printf("\r\nListo para Usarse\r\n");
 }
 
 #endif
