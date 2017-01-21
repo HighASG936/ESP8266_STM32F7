@@ -2,10 +2,15 @@
 #define ESP8266_STM32F7_H
 
 #include "Terminal_Uart.h"
-#include "string.h"
 
 #define NombreIndex	10
 #define PassIndex		26
+
+void Wifi_Inicializar(UART_HandleTypeDef UART);
+void Wifi_EnviarATComand(uint8_t * Comando);
+void Wifi_GetStatus (void);
+void Wifi_Conectar(uint8_t * Name, uint8_t * Password);
+void Wifi_Atencion(void);
 
 uint8_t ATConectar[] = 
 {
@@ -13,21 +18,41 @@ uint8_t ATConectar[] =
 	'"',0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,'"',',',
 	'"',0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,'"'};
 
+	
+typedef union
+{
+	uint8_t all;
+	
+	struct
+	{
+		uint8_t Bit7 								:1;
+		uint8_t Bit6 								:1;
+		uint8_t Bit5 								:1;
+		uint8_t Bit4 								:1;
+		uint8_t Bit3 								:1;
+		uint8_t Bit2 								:1;
+		uint8_t Bit1 								:1;
+		uint8_t InstructionThen 		:1;
+	};
+
+}eWifiFlags;
+		
 typedef struct
 {
 	UART_HandleTypeDef WifiUart;
-	uint8_t  WifiBuffer[100]; 
+	eWifiFlags Flags;
 	struct
 	{
 		void (*getStatus)(void);
 		void (*Atencion)(void);
 		void (*ATComand)(uint8_t * Comando);
 		void (*Conectar)(uint8_t * Name, uint8_t * Password);
-
 	};
-}sWifi;
+	
+	
+}eWifi;
 
-sWifi	gsWifi;
+eWifi	gsWifi;
 
 void Wifi_EnviarATComand(uint8_t * Comando)
 {
@@ -39,6 +64,7 @@ void Wifi_EnviarATComand(uint8_t * Comando)
 	}	
 	HAL_UART_Transmit(&gsWifi.WifiUart ,(uint8_t *) "\r\n",2,100);
 	while (Terminal_Uart_Recibir(&gsWifi.WifiUart) != UartIdle);
+	
 }
 
 
@@ -52,6 +78,14 @@ void Wifi_GetStatus (void)
 void Wifi_Atencion(void)
 {
 	Terminal_Uart_Atencion(gsWifi.WifiUart);
+	
+	if(Terminal_Uart_GetCharRx() == '>' && gsWifi.Flags.InstructionThen == false) 
+	{
+		gsTerminalUart.CharRx = 0x00;
+		gsWifi.Flags.InstructionThen = true;
+	}
+	gsWifi.Flags.InstructionThen = false;
+	gsTerminalUart.Flag.Recibiendo = false;
 }
 
 void Wifi_Conectar(uint8_t * Name, uint8_t * Password)
@@ -74,7 +108,6 @@ void Wifi_Conectar(uint8_t * Name, uint8_t * Password)
 	}
 	Wifi_EnviarATComand(ATConectar);
 	uint8_t i;
-		printf("\r\nCONECTANDO...\r\n");
 	for(i=0;i<200;i++)
 	{
 	while (Terminal_Uart_Recibir(&gsWifi.WifiUart) != UartIdle);
@@ -83,18 +116,12 @@ void Wifi_Conectar(uint8_t * Name, uint8_t * Password)
 
 void Wifi_Inicializar(UART_HandleTypeDef UART)
 {
-	gsWifi.WifiUart 			= UART;
+	gsWifi.WifiUart 			= 	UART;
 	gsWifi.getStatus 			= 	Wifi_GetStatus;
 	gsWifi.Atencion				=		Wifi_Atencion;
 	gsWifi.ATComand				=   Wifi_EnviarATComand;
 	gsWifi.Conectar				=		Wifi_Conectar;
 	Terminal_Uart_Inicializar();
-	gsWifi.getStatus();
-	gsWifi.Conectar((uint8_t *) "INFINITUM369f",(uint8_t *) "a1add102e0");
-	gsWifi.ATComand((uint8_t *)"AT+CIPMUX=1");
-	gsWifi.ATComand((uint8_t *)"AT+CIPSERVER=1,80");
-	gsWifi.ATComand((uint8_t *)"AT+CIFSR");
-	printf("\r\nListo para Usarse\r\n");
 }
 
 #endif
