@@ -6,7 +6,7 @@
 #define NombreIndex	10
 #define PassIndex		26
 
-void Wifi_Inicializar(UART_HandleTypeDef UART);
+uint8_t Wifi_Inicializar(UART_HandleTypeDef UART, GPIO_TypeDef * WifiPortBuzzer, uint16_t Wifi_Pin);
 void Wifi_EnviarATComand(uint8_t * Comando);
 void Wifi_GetStatus (void);
 void Wifi_Conectar(uint8_t * Name, uint8_t * Password);
@@ -16,8 +16,17 @@ uint8_t ATConectar[] =
 {
 	'A','T','+','C','W','J','A','P','=',
 	'"',0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,'"',',',
-	'"',0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,'"'};
+	'"',0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,'"'
+};
 
+GPIO_InitTypeDef Wifi_InitStruct;		//Estructura del GPIO para la tarjeta ESP8266
+
+enum
+{
+	Busy,
+	Success,
+	Idle
+}WifiFuncStatus;
 	
 typedef union
 {
@@ -54,6 +63,19 @@ typedef struct
 
 eWifi	gsWifi;
 
+//-------------------------------------------------------------------------------------------------------------------------
+//Name: 
+//
+//Description:
+//
+//
+//Parameters: 
+//
+//Return: 
+//
+//Author: Aurelio Siordia González
+//Fecha: 20/01/2017
+//-------------------------------------------------------------------------------------------------------------------------
 void Wifi_EnviarATComand(uint8_t * Comando)
 {
 	uint8_t *u8ATComand = Comando;
@@ -67,19 +89,43 @@ void Wifi_EnviarATComand(uint8_t * Comando)
 	
 }
 
-
+//-------------------------------------------------------------------------------------------------------------------------
+//Name: 
+//
+//Description:
+//
+//
+//Parameters: 
+//
+//Return: 
+//
+//Author: Aurelio Siordia González
+//Fecha: 20/01/2017
+//-------------------------------------------------------------------------------------------------------------------------
 void Wifi_GetStatus (void)
 {
 		gsWifi.ATComand((uint8_t *)"AT\r\n");
 		while (Terminal_Uart_Recibir(&gsWifi.WifiUart) != UartIdle);
 }
 
-
+//-------------------------------------------------------------------------------------------------------------------------
+//Name: 
+//
+//Description:
+//
+//
+//Parameters: 
+//
+//Return: 
+//
+//Author: Aurelio Siordia González
+//Fecha: 20/01/2017
+//-------------------------------------------------------------------------------------------------------------------------
 void Wifi_Atencion(void)
 {
-	Terminal_Uart_Atencion(gsWifi.WifiUart);
-	
-	if(Terminal_Uart_GetCharRx() == '>' && gsWifi.Flags.InstructionThen == false) 
+	Terminal_Uart_Atencion(gsWifi.WifiUart);	
+	//Si se trata de ingresar un dato para transmitir
+	if(gsTerminalUart.GetCharRx() == '>' && gsWifi.Flags.InstructionThen == false) 
 	{
 		gsTerminalUart.CharRx = 0x00;
 		gsWifi.Flags.InstructionThen = true;
@@ -88,6 +134,19 @@ void Wifi_Atencion(void)
 	gsTerminalUart.Flag.Recibiendo = false;
 }
 
+//-------------------------------------------------------------------------------------------------------------------------
+//Name: 
+//
+//Description:
+//
+//
+//Parameters: 
+//
+//Return: 
+//
+//Author: Aurelio Siordia González
+//Fecha: 20/01/2017
+//-------------------------------------------------------------------------------------------------------------------------
 void Wifi_Conectar(uint8_t * Name, uint8_t * Password)
 {
 	uint8_t	u8ConectarIndex = NombreIndex;
@@ -107,21 +166,61 @@ void Wifi_Conectar(uint8_t * Name, uint8_t * Password)
 		u8ParametroIndex++;
 	}
 	Wifi_EnviarATComand(ATConectar);
-	uint8_t i;
-	for(i=0;i<200;i++)
+	uint16_t i;
+	for(i=0;i<100;i++)
 	{
 	while (Terminal_Uart_Recibir(&gsWifi.WifiUart) != UartIdle);
 	}
 }
 
-void Wifi_Inicializar(UART_HandleTypeDef UART)
+//-------------------------------------------------------------------------------------------------------------------------
+//Name: 
+//
+//Description:
+//
+//
+//Parameters: 
+//
+//Return: 
+//
+//Author: Aurelio Siordia González
+//Fecha: 20/01/2017
+//-------------------------------------------------------------------------------------------------------------------------
+uint8_t Wifi_Inicializar(UART_HandleTypeDef UART, GPIO_TypeDef * WifiPortBuzzer, uint16_t Wifi_Pin)
 {
-	gsWifi.WifiUart 			= 	UART;
-	gsWifi.getStatus 			= 	Wifi_GetStatus;
-	gsWifi.Atencion				=		Wifi_Atencion;
-	gsWifi.ATComand				=   Wifi_EnviarATComand;
-	gsWifi.Conectar				=		Wifi_Conectar;
-	Terminal_Uart_Inicializar();
+	static uint8_t 	StatusWifiInicializar = 0;
+	static uint32_t Counter  = 5000;
+	
+	if(StatusWifiInicializar == 0)
+	{
+		gsWifi.WifiUart 			= 	UART;
+		gsWifi.getStatus 			= 	Wifi_GetStatus;
+		gsWifi.Atencion				=		Wifi_Atencion;
+		gsWifi.ATComand				=   Wifi_EnviarATComand;
+		gsWifi.Conectar				=		Wifi_Conectar;
+		
+		//Iniciar módulo UART
+		Terminal_Uart_Inicializar();
+		
+		// Inicializa Pin para activar tarjeta de Wifi
+		Wifi_InitStruct.Pin 	= Wifi_Pin;
+		Wifi_InitStruct.Mode	= GPIO_MODE_OUTPUT_PP;
+		Wifi_InitStruct.Pull = GPIO_NOPULL;
+		Wifi_InitStruct.Speed = GPIO_SPEED_LOW;
+		
+		HAL_GPIO_Init(WifiPortBuzzer, &Wifi_InitStruct);
+		
+		//Iniciar pin en reset
+		HAL_GPIO_WritePin(WifiPortBuzzer, Wifi_Pin, GPIO_PIN_RESET);
+		StatusWifiInicializar = ~StatusWifiInicializar;
+		return(Busy);
+	}
+	// Lag antes de encender
+	Counter--;
+	if(Counter != 0) return(Busy);
+	
+	// Encender tarjeta de Wifi
+	HAL_GPIO_WritePin(WifiPortBuzzer, Wifi_Pin, GPIO_PIN_SET);
+	return(Success);
 }
-
 #endif
